@@ -18,7 +18,7 @@ python3 get_report_paths.py
 python3 get_family_participants.py --report_paths=report_paths_${todays_date}.csv
 
 # cp relevant reports, keeping directory structure and gunzip
-./cp-reports.sh 
+./cp_reports.sh 
 
 rm -rf reports-${todays_date}
 
