@@ -24,7 +24,7 @@ if __name__ == "__main__":
         for family in glob(join(family_prefix_dir, "*/")):
 
             # non-clinical and synonymous reports
-            reports = sorted([report for report in glob(join(family, "*wes*")) if "clinical" not in report and "synonymous" not in report])
+            reports = sorted([report for report in glob(join(family, "**/*wes*"), recursive = True) if "clinical" not in report and "synonymous" not in report])
 
             if len(reports) >= 1:
                 report_paths.append(reports[-1]) #latest report since prefix is: yyyy-mm-dd
