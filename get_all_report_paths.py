@@ -65,7 +65,7 @@ def filter_reports(reports:List[str], report_type:str) -> List[str]:
             filtered_reports = sorted([x for x in reports 
                                            # for old exomes, filters out config files and files ending in {create|merge}_report.csv 
                                            if "config" not in x and "report" not in x and "data_versions" not in x])
-        elif report_type == 'current_exome':
+        elif report_type == 'current_exome' or report_type == 'in_progress_exome':
             filtered_reports = sorted([x for x in reports if "clinical" not in x and 'synonymous' not in x])
         elif 'genome' in report_type:
             filtered_reports = sorted([x for x in reports if "clinical" not in x])
@@ -92,15 +92,19 @@ def traverse_get_report_paths(input_dict) -> List[str]:
         - old: `/hpf/largeprojects/ccm_dccforge/dccdipg/c4r_wgs/results/1544/reports/1544.wes.regular.2020-11-04.csv`,
                 `/hpf/largeprojects/ccm_dccforge/dccdipg/c4r_wgs/results/2203/report/coding/2203/2203.wes.regular.2021-07-18.csv`
     - exclude clinical or synonymous reports
+    
+    in_progress_exome
+    - structure follows more closely to genomes (family identifiers sit directly under root path)
+    - crg2 report path, eg. `2535/report/coding/2535/2535.wes.regular.2022-02-05.csv`
     """
     
     report_paths = []
     for report_type, root_path in input_dict.items():
         print(report_type, root_path)
-        if 'exome' in report_type:
-            root_path_pattern = "*x/"
-        elif 'genome' in report_type:
+        if 'genome' in report_type or report_type == 'in_progress_exome':
             root_path_pattern = "*/"
+        elif 'exome' in report_type:
+            root_path_pattern = "*x/"
         else:
             raise ValueError("report_type must contain either genome or exome")
 
@@ -110,49 +114,61 @@ def traverse_get_report_paths(input_dict) -> List[str]:
         # this will be 2x, 3x, etc for exomes, or the family_id for genomes
         # additional logic to parse out family subdirs in exomes
         for subfolder in globbed_root_path:
-
-            if 'exome' in report_type:
-
-                for family in glob(join(subfolder, "*/")):
-                    if 'bams' in family:
-                        continue
-
-                    if 'old_exome' in report_type:
-                        pattern = "**/*sv"
-                    elif 'current_exome' in report_type:
-                        pattern = "**/*wes*sv"
-
-                    reports = glob(join(family, pattern), recursive = True)
-                    reports = filter_reports(reports, report_type)
-
-
-                    if len(reports) > 1:
-#                         print("\tMore than one report found for %s" % family)
-                        report_paths.append({"folder": family,"report": reports[-1], "report_type": report_type, "all_reports": reports})
-                    elif len(reports) == 1:
-                        report_paths.append({"folder": family, "report": reports[-1], "report_type": report_type, "all_reports": None})
-                    else:
-                        report_paths.append({"folder": family, "report": None, "report_type": report_type, "all_reports": None})
-                        print("\tNo report files found for %s" % family)
-
-            elif 'genome' in report_type:
+            reports = []
+            family_folder = None
+            
+            if 'genome' in report_type:
                 # unlike exomes, the family_ids sit directly in the root path so we need to filter out some noise
                 if basename(dirname(subfolder))[0].isdigit():
-
                     for folder in glob(join(subfolder, "*/")): # recursively searching for 'report' is very slow
                         if 'report' in folder:
                             reports = glob(join(folder, "**/*wes*sv"), recursive = True) # using w*s didn't capture anything else
                             reports = filter_reports(reports, report_type)
-
+                            family_folder = subfolder
                             if len(reports) > 1:
-#                                 print("\tMore than one report found for %s" % subfolder)
-                                report_paths.append({"folder": subfolder, "report": reports[-1], "report_type": report_type, "all_reports": reports})
+                    #                         print("\tMore than one report found for %s" % family)
+                                report_paths.append({"folder": family_folder,"report": reports[-1], "report_type": report_type, "all_reports": reports})
                             elif len(reports) == 1:
-                                report_paths.append({"folder": subfolder, "report": reports[-1], "report_type": report_type, "all_reports": None})
+                                report_paths.append({"folder": family_folder, "report": reports[-1], "report_type": report_type, "all_reports": None})
                             else:
-                                report_paths.append({"folder": subfolder, "report": None, "report_type": report_type, "all_reports": None})
-                                print("\tNo report files found for %s" % folder)
+                                report_paths.append({"folder": family_folder, "report": None, "report_type": report_type, "all_reports": None})
+                                print("\tNo report files found for %s" % family_folder)
                                 
+            elif report_type == 'in_progress_exome':
+                # could re-factor this into the if statement below
+                if basename(dirname(subfolder))[0].isdigit():
+                    reports = glob(join(subfolder, "**/*wes*"), recursive = True)
+                    reports = filter_reports(reports, report_type)
+                    family_folder = subfolder
+                    if len(reports) > 1:
+            #                         print("\tMore than one report found for %s" % family)
+                        report_paths.append({"folder": family_folder,"report": reports[-1], "report_type": report_type, "all_reports": reports})
+                    elif len(reports) == 1:
+                        report_paths.append({"folder": family_folder, "report": reports[-1], "report_type": report_type, "all_reports": None})
+                    else:
+                        report_paths.append({"folder": family_folder, "report": None, "report_type": report_type, "all_reports": None})
+                        print("\tNo report files found for %s" % family_folder)
+            elif 'exome' in report_type:
+                for family in glob(join(subfolder, "*/")):
+                    if 'bams' in family: continue
+                    if 'old_exome' in report_type:
+                        pattern = "**/*sv"
+                    elif 'current_exome' in report_type:
+                        pattern = "**/*wes*sv"
+            
+                    reports = glob(join(family, pattern), recursive = True)
+                    reports = filter_reports(reports, report_type)
+                    family_folder = family
+                    if len(reports) > 1:
+            #                         print("\tMore than one report found for %s" % family)
+                        report_paths.append({"folder": family_folder,"report": reports[-1], "report_type": report_type, "all_reports": reports})
+                    elif len(reports) == 1:
+                        report_paths.append({"folder": family_folder, "report": reports[-1], "report_type": report_type, "all_reports": None})
+                    else:
+                        report_paths.append({"folder": family_folder, "report": None, "report_type": report_type, "all_reports": None})
+                        print("\tNo report files found for %s" % family_folder)
+
+
     return report_paths
                                 
 
@@ -166,7 +182,8 @@ if __name__ == "__main__":
         'current_exome': '/hpf/largeprojects/ccm_dccforge/dccforge/results',
         'old_exome' : '/hpf/largeprojects/ccmbio/naumenko/project_cheo/DCC_Samples_part1',
         'current_genome': '/hpf/largeprojects/ccmbio/ccmmarvin_shared/genomes',
-        'old_genome': '/hpf/largeprojects/ccm_dccforge/dccdipg/c4r_wgs/results'
+        'old_genome': '/hpf/largeprojects/ccm_dccforge/dccdipg/c4r_wgs/results',
+        'in_progress_exome': '/hpf/largeprojects/ccmbio/ccmmarvin_shared/exomes/in_progress'
     }
     
     report_paths = traverse_get_report_paths(input_dict)
