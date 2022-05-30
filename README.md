@@ -1,12 +1,17 @@
-
 # About
 
-Series of scripts for handling dccforge WES reports from CCM's CRE ppeline. These scripts could be further integrated but were written separately.
+Series of scripts for handling exome reports from CCM's CRE pipeline. 
 
-1. `get_report_paths.py` - Obtains all relevant report_paths and dumps as dated csv
-2. `get_family_participants.py` - Gets all family-participant identifiers by reading in each report from the previous step and dumping to a json.
-3. `cp-reports.sh` - Copies, tarball and gunzips all reports from get_report_paths.py
+1. `get_all_report_paths.py `- traverses multiple known directories with exome and exome-like reports and dumps the information into two flat files
+- known directories:
+    - `current_exome`: `/hpf/largeprojects/ccm_dccforge/dccforge/results`
+    - `old_exome` : `/hpf/largeprojects/ccmbio/naumenko/project_cheo/DCC_Samples_part1`
+    - `current_genome`: `/hpf/largeprojects/ccmbio/ccmmarvin_shared/genomes`
+    - `old_genome`: `/hpf/largeprojects/ccm_dccforge/dccdipg/c4r_wgs/results`
+    - `in_progress_exome`: `/hpf/largeprojects/ccmbio/ccmmarvin_shared/exomes/in_progress`
+- outputs:
+    - `all-fam-ptp-reports-yyyy-mm-dd.csv` - parsed family and participant codenames and the report they belong to 
+    - `all-report-paths-yyyy-mm-dd.csv` - report paths 
+2. `copy_reports.py `- takes output of above script, and cps all reports into a single, nested directory
 
-
-`get_reports_mapping_cp.sh` - A wrapper for the above three scripts, all output will be moved to a folder given by the current date in yyyy-mm-dd format. eg. `2022-01-04`
 
