@@ -14,6 +14,7 @@ The below scripts should be run in the directory you'd like the output saved in,
 - outputs:
     - `./all_reports-yyyy-mm-dd/all-fam-ptp-reports-yyyy-mm-dd.csv` - parsed family and participant codenames and the report they belong to 
     - `./all_reports-yyyy-mm-dd/all-report-paths-yyyy-mm-dd.csv` - report paths 
+    	- sanity check report counts by type: `df[['report', 'report_type']].dropna().value_counts('report_type')`
 2. `copy_reports.py `- takes output of above script, and cps all reports into a single, nested directory
 
 
